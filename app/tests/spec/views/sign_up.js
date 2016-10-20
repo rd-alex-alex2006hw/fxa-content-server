@@ -1379,30 +1379,29 @@ define(function (require, exports, module) {
       });
     });
 
-    describe('_engageForm', function () {
-      it('logs the engage event', function () {
-        return view.render()
-          .then(function () {
-            view.afterVisible();
-            assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
-            view.$('form').click();
-            assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
-          });
-      });
-
-      it('logs the have-account flow event instead of engage', function () {
-        return view.render()
-          .then(function () {
-            view.afterVisible();
-            assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
-            assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.have-account'));
-            view.$('#have-account').click();
-            assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
-            assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.have-account'));
-          });
-      });
+    it('logs the engage event', () => {
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signup.begin'));
+      view.$('form').click();
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
+      view.$('input').click();
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
     });
 
+    it('logs the have-account event', () => {
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.have-account'));
+      view.$('#have-account').click();
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.engage'));
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signup.have-account'));
+    });
+
+    it('logs the submit event', () => {
+      view.$('#submit-btn').click();
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signup.submit'));
+      view.enableForm();
+      view.$('#submit-btn').click();
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signup.submit'));
+    });
   });
 });
 

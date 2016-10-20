@@ -786,16 +786,32 @@ define(function (require, exports, module) {
       });
     });
 
-    describe('_engageForm', function () {
-      it('logs the engage event', function () {
-        return view.render()
-          .then(function () {
-            view.afterVisible();
-            assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signin.engage'));
-            view.$('form').click();
-            assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signin.engage'));
-          });
-      });
+    it('logs the engage event', () => {
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signin.begin'));
+      view.$('form').click();
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signin.engage'));
+      view.$('input').click();
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signin.engage'));
+    });
+
+    it('logs the create-account event', () => {
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signin.create-account'));
+      view.$('#create-account').click();
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signin.create-account'));
+    });
+
+    it('logs the forgot-password event', () => {
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signin.forgot-password'));
+      view.$('#forgot-password').click();
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signin.forgot-password'));
+    });
+
+    it('logs the submit event', () => {
+      view.$('#submit-btn').click();
+      assert.isFalse(TestHelpers.isEventLogged(metrics, 'flow.signin.submit'));
+      view.enableForm();
+      view.$('#submit-btn').click();
+      assert.isTrue(TestHelpers.isEventLogged(metrics, 'flow.signin.submit'));
     });
   });
 });

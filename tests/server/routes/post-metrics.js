@@ -549,10 +549,10 @@ define([
       body: {},
       get: sinon.spy(function (header) {
         switch (header.toLowerCase()) {
-        case 'content-type':
-          return options.contentType || 'application/json';
-        case 'user-agent':
-          return options.userAgent;
+          case 'content-type':
+            return options.contentType || 'application/json';
+          case 'user-agent':
+            return options.userAgent;
         }
         return '';
       })

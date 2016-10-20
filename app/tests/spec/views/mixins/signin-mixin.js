@@ -23,17 +23,26 @@ define(function (require, exports, module) {
   describe('views/mixins/signin-mixin', function () {
     it('exports correct interface', function () {
       assert.isObject(SignInMixin);
-      assert.lengthOf(Object.keys(SignInMixin), 6);
+      assert.lengthOf(Object.keys(SignInMixin), 7);
       assert.isFunction(SignInMixin.signIn);
       assert.isFunction(SignInMixin.onSignInBlocked);
       assert.isFunction(SignInMixin.onSignInSuccess);
-      assert.equal(SignInMixin.signInSubmitContext, 'signin', 'has a submit context');
+      assert.isFunction(SignInMixin._clickLink);
+      assert.isFunction(SignInMixin._engageSignInForm);
+      assert.isFunction(SignInMixin._submitSignInForm);
+      assert.deepEqual(SignInMixin.events, {
+        'click a': '_clickLink',
+        'click input': '_engageSignInForm',
+        'input input': '_engageSignInForm',
+        submit: '_submitSignInForm'
+      });
     });
 
     describe('signIn', function () {
       let account;
       let broker;
       let flow;
+      let isFormEnabled;
       let model;
       let relier;
       let user;
@@ -52,9 +61,12 @@ define(function (require, exports, module) {
 
         relier = new Relier();
         view = {
+          _clickLink: SignInMixin._clickLink,
+          _engageSignInForm: SignInMixin._engageSignInForm,
           _formPrefill: {
             clear: sinon.spy()
           },
+          _submitSignInForm: SignInMixin._submitSignInForm,
           broker: broker,
           currentPage: 'force_auth',
           displayError: sinon.spy(),
@@ -65,8 +77,11 @@ define(function (require, exports, module) {
           invokeBrokerMethod: sinon.spy(function () {
             return p();
           }),
+          isFormEnabled: () => isFormEnabled,
           logEvent: sinon.spy(),
           logEventOnce: sinon.spy(),
+          logFlowEvent: sinon.spy(),
+          logFlowEventOnce: sinon.spy(),
           logViewEvent: sinon.spy(),
           model: model,
           navigate: sinon.spy(),
@@ -75,7 +90,6 @@ define(function (require, exports, module) {
           onSignInSuccess: SignInMixin.onSignInSuccess,
           relier: relier,
           signIn: SignInMixin.signIn,
-          signInSubmitContext: SignInMixin.signInSubmitContext,
           user: user
         };
       });
@@ -194,7 +208,6 @@ define(function (require, exports, module) {
           assert.isTrue(
             user.signInAccount.calledWith(account, 'password', relier));
           assert.equal(user.signInAccount.args[0][3].resume, RESUME_TOKEN);
-          assert.equal(view.logEvent.args[0], 'flow.signin.submit', 'correct submit event');
         });
 
         it('calls view.navigate correctly', function () {
@@ -204,6 +217,13 @@ define(function (require, exports, module) {
           assert.equal(args[0], 'confirm');
           assert.strictEqual(args[1].account, account);
           assert.strictEqual(args[1].flow, flow);
+        });
+
+        it('calls logFlowEvent correctly', () => {
+          assert.equal(view.logFlowEvent.callCount, 1);
+          assert.equal(view.logFlowEvent.args[0].length, 2);
+          assert.equal(view.logFlowEvent.args[0][0], 'attempt');
+          assert.equal(view.logFlowEvent.args[0][1], 'signin');
         });
       });
 
@@ -231,6 +251,13 @@ define(function (require, exports, module) {
           assert.equal(args[0], 'confirm_signin');
           assert.strictEqual(args[1].account, account);
           assert.strictEqual(args[1].flow, flow);
+        });
+
+        it('calls logFlowEvent correctly', () => {
+          assert.equal(view.logFlowEvent.callCount, 1);
+          assert.equal(view.logFlowEvent.args[0].length, 2);
+          assert.equal(view.logFlowEvent.args[0][0], 'attempt');
+          assert.equal(view.logFlowEvent.args[0][1], 'signin');
         });
       });
 
@@ -309,6 +336,86 @@ define(function (require, exports, module) {
           assert.doesNotThrow(function () {
             return view.signIn(account);
           });
+        });
+      });
+
+      describe('_clickLink with target id', () => {
+        beforeEach(() => {
+          view.viewName = 'foo';
+          view._clickLink({
+            target: {
+              id: 'bar'
+            }
+          });
+        });
+
+        it('emits flow events correctly', () => {
+          assert.equal(view.logFlowEvent.callCount, 1);
+          assert.equal(view.logFlowEvent.args[0].length, 2);
+          assert.equal(view.logFlowEvent.args[0][0], 'bar');
+          assert.equal(view.logFlowEvent.args[0][1], 'foo');
+
+          assert.strictEqual(view.logFlowEventOnce.callCount, 0);
+        });
+      });
+
+      describe('_clickLink without target id', () => {
+        beforeEach(() => {
+          view.viewName = 'foo';
+          view._clickLink({
+            target: {}
+          });
+        });
+
+        it('emits flow events correctly', () => {
+          assert.equal(view.logFlowEvent.callCount, 0);
+          assert.strictEqual(view.logFlowEventOnce.callCount, 0);
+        });
+      });
+
+      describe('_engageSignInForm', () => {
+        beforeEach(() => {
+          view.viewName = 'wibble';
+          view._engageSignInForm();
+        });
+
+        it('emits flow event correctly', () => {
+          assert.strictEqual(view.logFlowEvent.callCount, 0);
+
+          assert.equal(view.logFlowEventOnce.callCount, 1);
+          assert.equal(view.logFlowEventOnce.args[0].length, 2);
+          assert.equal(view.logFlowEventOnce.args[0][0], 'engage');
+          assert.equal(view.logFlowEventOnce.args[0][1], 'wibble');
+        });
+      });
+
+      describe('_submitSignInForm with form enabled', () => {
+        beforeEach(() => {
+          isFormEnabled = true;
+          view.viewName = 'wibble';
+          view._submitSignInForm();
+        });
+
+        it('emits flow events correctly', () => {
+          assert.strictEqual(view.logFlowEventOnce.callCount, 0);
+
+          assert.equal(view.logFlowEvent.callCount, 1);
+          assert.equal(view.logFlowEvent.args[0].length, 2);
+          assert.equal(view.logFlowEvent.args[0][0], 'submit');
+          assert.equal(view.logFlowEvent.args[0][1], 'wibble');
+        });
+      });
+
+      describe('_submitSignInForm with form disabled', () => {
+        beforeEach(() => {
+          isFormEnabled = false;
+          view.viewName = 'wibble';
+          view._submitSignInForm();
+        });
+
+        it('emits flow events correctly', () => {
+          assert.strictEqual(view.logFlowEventOnce.callCount, 0);
+          assert.strictEqual(view.logFlowEvent.callCount, 0);
         });
       });
     });
